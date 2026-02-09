@@ -66,10 +66,12 @@ prompt_confirm() {
 }
 
 LOG_DIR="${LOG_DIR:-$HOME/.cache/huawei-fnkeys-fix/logs}"
+CONFIG_DIR="$HOME/.config/input-remapper-2"
 PRESET_DEVICE="Huawei WMI hotkeys"
 PRESET_NAME="volume-ignore"
-PRESET_DIR="$HOME/.config/input-remapper/presets/$PRESET_DEVICE"
+PRESET_DIR="$CONFIG_DIR/presets/$PRESET_DEVICE"
 PRESET_FILE="$PRESET_DIR/$PRESET_NAME.json"
+CONFIG_FILE="$CONFIG_DIR/config.json"
 
 run_cmd() {
   local label="$1"
@@ -101,32 +103,63 @@ run_cmd "install input-remapper" sudo apt install -y input-remapper
 info "Creating input-remapper preset"
 run_cmd "create preset dir" mkdir -p "$PRESET_DIR"
 cat >"$PRESET_FILE" <<'EOF'
-{
-  "mapping": {
-    "XF86AudioLowerVolume": {
-      "main": true,
-      "mappings": {
-        "EV_KEY": {
-          "code": 114,
-          "value": 1,
-          "type": "disabled"
-        }
+[
+  {
+    "input_combination": [
+      {
+        "type": 1,
+        "code": 114
       }
-    },
-    "XF86AudioRaiseVolume": {
-      "main": true,
-      "mappings": {
-        "EV_KEY": {
-          "code": 115,
-          "value": 1,
-          "type": "disabled"
-        }
+    ],
+    "output_symbol": "disable",
+    "target_uinput": "keyboard"
+  },
+  {
+    "input_combination": [
+      {
+        "type": 1,
+        "code": 115
       }
-    }
+    ],
+    "output_symbol": "disable",
+    "target_uinput": "keyboard"
   }
-}
+]
 EOF
 ok "Preset created: $PRESET_FILE"
+
+info "Configuring autoload"
+python3 - <<'PY'
+import json
+import os
+
+config_file = os.path.expanduser("~/.config/input-remapper-2/config.json")
+os.makedirs(os.path.dirname(config_file), exist_ok=True)
+
+data = {}
+if os.path.exists(config_file):
+  try:
+    with open(config_file, "r", encoding="utf-8") as fh:
+      data = json.load(fh)
+  except json.JSONDecodeError:
+    data = {}
+
+data.setdefault("autoload", {})
+data["autoload"]["Huawei WMI hotkeys"] = "volume-ignore"
+
+if "version" not in data:
+  try:
+    from inputremapper.logging.logger import VERSION
+
+    data["version"] = VERSION
+  except Exception:
+    data["version"] = "2.1.1"
+
+with open(config_file, "w", encoding="utf-8") as fh:
+  json.dump(data, fh, indent=4)
+  fh.write("\n")
+PY
+ok "Autoload set in: $CONFIG_FILE"
 
 if prompt_confirm "Enable input-remapper daemon and autoload preset?"; then
   if command -v systemctl >/dev/null 2>&1; then
@@ -139,7 +172,7 @@ if prompt_confirm "Enable input-remapper daemon and autoload preset?"; then
   fi
 
   if command -v input-remapper-control >/dev/null 2>&1; then
-    run_cmd "autoload preset" input-remapper-control --command autoload --preset "$PRESET_DEVICE/$PRESET_NAME"
+    run_cmd "autoload preset" input-remapper-control --command autoload
   else
     warn "input-remapper-control not found; open input-remapper-gtk and enable autoload"
   fi

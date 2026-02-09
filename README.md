@@ -71,7 +71,7 @@ After installation you should have smooth volume changes with all other Fn keys 
 
 ```bash
 sudo systemctl status input-remapper-daemon.service
-input-remapper-control --list-presets
+input-remapper-control --list-devices
 xinput test "Huawei WMI hotkeys"
 ```
 

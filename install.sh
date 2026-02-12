@@ -22,6 +22,13 @@ for arg in "$@"; do
   esac
 done
 
+# Set APT_YES_FLAG based on AUTO_YES
+if [[ "$AUTO_YES" -eq 1 ]]; then
+  APT_YES_FLAG="-y"
+else
+  APT_YES_FLAG=""
+fi
+
 if command -v tput >/dev/null 2>&1; then
   COLOR_OK=$(tput setaf 2)
   COLOR_WARN=$(tput setaf 3)
@@ -98,7 +105,7 @@ fi
 
 info "Installing input-remapper"
 run_cmd "apt update" sudo apt update
-run_cmd "install input-remapper" sudo apt install -y input-remapper
+run_cmd "install input-remapper" sudo apt install $APT_YES_FLAG input-remapper
 
 info "Creating input-remapper preset"
 run_cmd "create preset dir" mkdir -p "$PRESET_DIR"
